@@ -1,3 +1,5 @@
+![Uploading image.png…]()
+
 # ファイルナビ（Google Apps Script / GAS）
 
 Google Drive の **フォルダURL/フォルダID** からファイル一覧を取得し、クリックで **Driveプレビュー（iframe）** を表示するシンプルなWebアプリです。  
