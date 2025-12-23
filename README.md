@@ -215,12 +215,15 @@ clasp push
 ---
 
 ## ライセンス
+
 MIT License
 
 ## 免責
+
 本ツールの利用により生じたいかなる損害についても、
 作者は責任を負いません。自己責任で利用してください。
 
 ## 非公式表記
+
 本アプリは Google 公式プロダクトではありません。  
 Google Drive / Google Apps Script は Google LLC の商標です。
