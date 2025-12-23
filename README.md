@@ -1,6 +1,6 @@
-# ファイルナビ（Google Apps Script / GAS）
-
 ![Uploading image.png…]()
+
+# ファイルナビ（Google Apps Script / GAS）
 
 Google Drive の **フォルダURL/フォルダID** からファイル一覧を取得し、クリックで **Driveプレビュー（iframe）** を表示するシンプルなWebアプリです。  
 GAS（Google Apps Script）を触ったことがない人でも、自分の環境に導入できる手順をまとめています。
