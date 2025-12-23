@@ -1,0 +1,1501 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ファイルナビ</title>
+  <style>
+    /* Solarized Light (fixed) */
+    :root{
+      --base03:#002b36; --base02:#073642; --base01:#586e75; --base00:#657b83;
+      --base0:#839496;  --base1:#93a1a1;  --base2:#eee8d5;  --base3:#fdf6e3;
+      --blue:#268bd2; --green:#859900; --violet:#6c71c4;
+
+      --bg:var(--base3);
+      --panel:var(--base2);
+      --text:var(--base00);
+      --muted:var(--base01);
+      --border: rgba(7,54,66,.18);
+      --shadow: 0 8px 24px rgba(0,43,54,.10);
+
+      --radius:14px;
+      --btn-border: rgba(7,54,66,.22);
+      --brand: var(--blue);
+      --brand-weak: rgba(38,139,210,.12);
+
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Sans",
+              "Noto Sans JP", "Yu Gothic", Meiryo, Arial, sans-serif;
+    }
+    *{box-sizing:border-box;}
+    html,body{height:100%;}
+    body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);}
+
+    .app{height:100%;display:grid;grid-template-columns:320px 1fr;}
+
+    /* Sidebar */
+    .sidebar{
+      background: linear-gradient(180deg, var(--panel), rgba(238,232,213,.78));
+      border-right:1px solid var(--border);
+      padding:14px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-width:280px;
+      min-height:0;
+    }
+    html[data-theme="light"] .sidebar,
+    html[data-theme="dark"] .sidebar{
+      background: linear-gradient(180deg, var(--panel), var(--bg));
+    }
+    .brandbar{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 10px;}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:800;color:var(--text);}
+    .brand .logo{
+      width:34px;height:34px;border-radius:10px;background:var(--brand-weak);
+      border:1px solid rgba(38,139,210,.25);display:grid;place-items:center;color:var(--brand);
+      font-weight:900;
+    }
+    .iconbtn{
+      width:34px;height:34px;border-radius:10px;border:1px solid var(--btn-border);
+      background:var(--panel);display:grid;place-items:center;cursor:pointer;
+      opacity:0.9;
+    }
+    .iconbtn:hover{opacity:1;background:var(--bg);}
+
+    .card{
+      background: var(--panel);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:12px;
+    }
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+    .label{font-size:12px;color:var(--muted);letter-spacing:.02em;}
+    input{
+      width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--btn-border);
+      background:var(--bg);color:var(--text);outline:none;
+    }
+    input::placeholder{color:var(--muted);opacity:0.7;}
+    .row{display:flex;gap:10px;align-items:center;}
+
+    .btn{
+      padding:10px 12px;border-radius:12px;border:1px solid var(--btn-border);
+      background:var(--bg);color:var(--text);cursor:pointer;font-weight:700;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+    }
+    .btn:hover{background:var(--brand-weak);}
+    .btn.primary{
+      border-color: var(--brand);
+      background: var(--brand-weak);
+      color: var(--text);
+    }
+    .btn.primary:hover{background:var(--brand);color:var(--bg);}
+    .hint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px;}
+
+    .list{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;}
+    .search{position:relative;}
+    .search input{padding-left:34px;}
+    .search .mag{
+      position:absolute;left:10px;top:50%;transform:translateY(-50%);
+      color:var(--muted);font-size:14px;pointer-events:none;
+    }
+    .fileitems{
+      overflow:auto;border-radius:var(--radius);border:1px solid var(--border);
+      background: var(--panel);padding:6px;
+      flex:1;
+      min-height:0;
+    }
+    .item{
+      display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;
+      cursor:pointer;border:1px solid transparent;
+    }
+    .item:hover{background:rgba(38,139,210,.10);border-color:rgba(38,139,210,.18);}
+    .item.active{background:rgba(38,139,210,.16);border-color:rgba(38,139,210,.30);}
+    .ico{
+      width:30px;height:30px;border-radius:10px;display:grid;place-items:center;
+      border:1px solid var(--border);background:var(--panel);color:var(--text);
+      flex:0 0 auto;
+    }
+    .meta{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;}
+    .name{
+      font-size:13px;font-weight:750;color:var(--text);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .sub{
+      font-size:12px;color:var(--muted);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+
+    /* Main */
+    .main{display:flex;flex-direction:column;min-width:0;}
+    .topbar{
+      height:56px;border-bottom:1px solid var(--border);
+      background:var(--panel);
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 14px;gap:12px;
+    }
+    .title{font-weight:800;color:var(--text);min-width:0;}
+    .title span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+    .actions{display:flex;gap:10px;flex:0 0 auto;}
+    .btn.info{
+      background: rgba(108,113,196,.10);
+      border-color: rgba(108,113,196,.30);
+      color: var(--text);
+    }
+    .btn.download{
+      background: rgba(133,153,0,.12);
+      border-color: rgba(133,153,0,.28);
+      color: var(--text);
+    }
+    .content{flex:1;min-height:0;padding:14px;}
+    .preview{
+      height:100%;border-radius:var(--radius);border:1px solid var(--border);
+      background:var(--panel);box-shadow:var(--shadow);
+      overflow:hidden;position:relative;
+    }
+    .empty{
+      height:100%;
+      display:grid;place-items:center;text-align:center;color:var(--muted);
+      padding:20px;
+    }
+    .empty .folder{
+      width:54px;height:54px;border-radius:16px;border:1px solid var(--border);
+      background:var(--panel);display:grid;place-items:center;
+      color:var(--text);font-size:22px;margin:0 auto 10px;
+    }
+    .empty h2{margin:8px 0 6px;font-size:18px;color:var(--text);}
+    .empty p{margin:0;line-height:1.7;font-size:13px;}
+
+    iframe{
+      width:100%;height:100%;
+      border:0;
+      background:#fff;
+    }
+
+    .status{
+      margin-top:8px;font-size:12px;color:var(--muted);
+      display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    }
+    .pill{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 10px;border-radius:999px;border:1px solid var(--border);
+      background:var(--panel);color:var(--text);font-size:12px;
+    }
+
+    /* Modal */
+    .modal-overlay{
+      position:fixed;top:0;left:0;right:0;bottom:0;
+      background:rgba(0,43,54,.60);z-index:1000;
+      display:none;align-items:center;justify-content:center;
+    }
+    html[data-theme="solarizedLight"] .modal-overlay{
+      background:rgba(0,43,54,.60);
+    }
+    html[data-theme="light"] .modal-overlay{
+      background:rgba(15,23,42,.50);
+    }
+    html[data-theme="dark"] .modal-overlay{
+      background:rgba(0,0,0,.70);
+    }
+    .modal-overlay.show{display:flex;}
+    .modal{
+      background:var(--bg);border-radius:var(--radius);
+      box-shadow:var(--shadow);border:1px solid var(--border);
+      width:90%;max-width:600px;max-height:80vh;
+      display:flex;flex-direction:column;
+    }
+    .modal-header{
+      padding:14px 16px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .modal-title{font-weight:800;color:var(--text);}
+    .modal-close{
+      width:32px;height:32px;border-radius:8px;
+      border:1px solid var(--btn-border);background:var(--panel);
+      cursor:pointer;display:grid;place-items:center;
+    }
+    .modal-close:hover{background:var(--bg);}
+    .modal-body{
+      flex:1;overflow:auto;padding:12px;min-height:0;
+    }
+    .tree-node{
+      padding:8px 12px;cursor:pointer;border-radius:8px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .tree-node:hover{background:rgba(38,139,210,.10);}
+    .tree-node.selected{background:rgba(38,139,210,.16);}
+    .tree-expand{
+      width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+      cursor:pointer;border-radius:4px;line-height:1;
+    }
+    .tree-expand:hover{background:rgba(38,139,210,.10);}
+    .tree-expand.empty{opacity:.3;cursor:default;}
+    .tree-icon{font-size:18px;}
+    .tree-name{flex:1;font-size:13px;color:var(--text);}
+    .tree-children{margin-left:24px;display:none;}
+    .tree-children.expanded{display:block;}
+    .tree-loading{padding:8px 12px;color:var(--muted);font-size:12px;}
+
+    /* Theme override: Solarized Light (original look) */
+    html[data-theme="solarizedLight"]{
+      --bg:var(--base3);
+      --panel:var(--base2);
+      --text:var(--base00);
+      --muted:var(--base01);
+      --border: rgba(7,54,66,.18);
+      --shadow: 0 8px 24px rgba(0,43,54,.10);
+
+      --btn-border: rgba(7,54,66,.22);
+      --brand: var(--blue);
+      --brand-weak: rgba(38,139,210,.12);
+    }
+
+    /* Solarized Light: restore original “white” surfaces & deep headings */
+    html[data-theme="solarizedLight"] .iconbtn{
+      background:rgba(255,255,255,.55);
+      opacity:1;
+    }
+    html[data-theme="solarizedLight"] .iconbtn:hover{background:rgba(255,255,255,.85);}
+
+    html[data-theme="solarizedLight"] .card{background: rgba(255,255,255,.55);}
+    html[data-theme="solarizedLight"] input{
+      background:rgba(255,255,255,.78);
+      color:var(--text);
+    }
+    html[data-theme="solarizedLight"] input::placeholder{color:rgba(88,110,117,.70);opacity:1;}
+
+    html[data-theme="solarizedLight"] select,
+    html[data-theme="solarizedLight"] input[type="number"]{
+      background:rgba(255,255,255,.78);
+      color:var(--text);
+    }
+
+    html[data-theme="solarizedLight"] .btn{
+      background:#fff;
+      color:var(--base00);
+    }
+    html[data-theme="solarizedLight"] .btn:hover{background:rgba(38,139,210,.10);}
+    html[data-theme="solarizedLight"] .btn.primary{
+      border-color: rgba(38,139,210,.35);
+      background: rgba(38,139,210,.12);
+      color: var(--base02);
+    }
+    html[data-theme="solarizedLight"] .btn.primary:hover{background:rgba(38,139,210,.18);color:var(--base02);}
+
+    html[data-theme="solarizedLight"] .fileitems{background: rgba(255,255,255,.40);}
+    html[data-theme="solarizedLight"] .topbar{background:rgba(255,255,255,.55);}
+    html[data-theme="solarizedLight"] .preview{background:rgba(255,255,255,.45);}
+
+    html[data-theme="solarizedLight"] .modal-close{background:rgba(255,255,255,.55);}
+    html[data-theme="solarizedLight"] .modal-close:hover{background:rgba(255,255,255,.85);}
+
+    html[data-theme="solarizedLight"] .favorite-item{
+      background:rgba(255,255,255,.40);
+      color:var(--base02);
+    }
+    html[data-theme="solarizedLight"] .favorite-item:hover{
+      background:rgba(38,139,210,.10);
+      border-color:rgba(38,139,210,.18);
+    }
+    html[data-theme="solarizedLight"] .favorite-edit-item{background:rgba(255,255,255,.40);}
+
+    html[data-theme="solarizedLight"] .pill{
+      border:1px solid rgba(7,54,66,.18);
+      background:rgba(238,232,213,.55);
+      color:var(--base02);
+    }
+
+    html[data-theme="solarizedLight"] .brand,
+    html[data-theme="solarizedLight"] .title,
+    html[data-theme="solarizedLight"] .name,
+    html[data-theme="solarizedLight"] .modal-title,
+    html[data-theme="solarizedLight"] .tree-name,
+    html[data-theme="solarizedLight"] .settings-group-title,
+    html[data-theme="solarizedLight"] .help-section-title{
+      color:var(--base02);
+    }
+
+    html[data-theme="solarizedLight"] .ico{
+      background:rgba(238,232,213,.55);
+      color:var(--base02);
+    }
+
+    html[data-theme="solarizedLight"] .empty .folder{
+      background:rgba(238,232,213,.70);
+      color:var(--base02);
+    }
+    html[data-theme="solarizedLight"] .empty h2{color:var(--base02);}
+
+    /* Theme override: Light (cool tone) */
+    html[data-theme="light"]{
+      --bg:#f8fafc;
+      --panel:#f1f5f9;
+      --text:#1e293b;
+      --muted:#64748b;
+      --border: rgba(15,23,42,.12);
+      --shadow: 0 8px 24px rgba(15,23,42,.08);
+
+      --btn-border: rgba(15,23,42,.16);
+      --brand: #3b82f6;
+      --brand-weak: rgba(59,130,246,.12);
+    }
+
+    /* Theme override: Dark (improved contrast) */
+    html[data-theme="dark"]{
+      --bg:#0f172a;
+      --panel:#1e293b;
+      --text:#f1f5f9;
+      --muted:#94a3b8;
+      --border: rgba(241,245,249,.15);
+      --shadow: 0 10px 30px rgba(0,0,0,.5);
+
+      --btn-border: rgba(241,245,249,.2);
+      --brand: #60a5fa;
+      --brand-weak: rgba(96,165,250,.2);
+    }
+
+    /* Favorites shortcuts */
+    .favorites-section{
+      margin-bottom:12px;
+    }
+    .favorites-list{
+      display:flex;flex-direction:column;gap:6px;margin-top:8px;
+    }
+    .favorite-item{
+      display:flex;align-items:center;gap:8px;padding:8px 10px;
+      border-radius:10px;border:1px solid var(--border);
+      background:var(--panel);cursor:pointer;
+      font-size:12px;color:var(--text);
+    }
+    .favorite-item:hover{
+      background:var(--brand-weak);border-color:var(--brand);
+    }
+    .favorite-item .fav-icon{font-size:14px;}
+    .favorite-item .fav-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    /* Settings/Help modal specific */
+    .settings-group{margin-bottom:16px;}
+    .settings-group-title{
+      font-size:13px;font-weight:800;color:var(--text);margin-bottom:8px;
+    }
+    .settings-item{
+      display:flex;align-items:center;justify-content:space-between;padding:8px 0;
+      border-bottom:1px solid var(--border);
+    }
+    .settings-item:last-child{border-bottom:none;}
+    .settings-item-label{font-size:12px;color:var(--text);flex:1;}
+    .settings-item-control{flex:0 0 auto;}
+    select{
+      padding:6px 10px;border-radius:8px;border:1px solid var(--btn-border);
+      background:var(--bg);color:var(--text);outline:none;font-size:12px;
+    }
+    input[type="number"]{
+      width:80px;padding:6px 10px;border-radius:8px;border:1px solid var(--btn-border);
+      background:var(--bg);color:var(--text);outline:none;font-size:12px;
+    }
+    input[type="checkbox"]{
+      width:18px;height:18px;cursor:pointer;
+    }
+    .favorites-edit{
+      display:flex;flex-direction:column;gap:6px;margin-top:8px;
+    }
+    .favorite-edit-item{
+      display:flex;align-items:center;gap:8px;padding:6px 8px;
+      border-radius:8px;border:1px solid var(--border);
+      background:var(--panel);
+    }
+    .favorite-edit-item .fav-name{flex:1;font-size:12px;color:var(--text);}
+    .favorite-edit-item .btn-small{
+      padding:4px 8px;font-size:11px;border-radius:6px;
+    }
+    .help-section{margin-bottom:20px;}
+    .help-section-title{
+      font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px;
+    }
+    .help-content{
+      font-size:12px;color:var(--text);line-height:1.7;
+    }
+    .help-content ul{margin:8px 0;padding-left:20px;}
+    .help-content li{margin:4px 0;}
+    .help-content code{
+      background:rgba(0,0,0,.08);padding:2px 6px;border-radius:4px;
+      font-family:monospace;font-size:11px;
+    }
+    .version-info{
+      margin-top:16px;padding-top:16px;border-top:1px solid var(--border);
+      font-size:11px;color:var(--muted);text-align:center;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brandbar">
+        <div class="brand">
+          <div class="logo">□</div>
+          <div>ファイルナビ</div>
+        </div>
+        <div class="row" style="gap:8px;">
+          <button class="iconbtn" id="backBtn" title="戻る（1つ前のフォルダ）" disabled>←</button>
+          <button class="iconbtn" id="settingsBtn" title="設定">⚙</button>
+          <button class="iconbtn" id="helpBtn" title="ヘルプ">?</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="field">
+          <div class="label">フォルダURL（またはフォルダID）</div>
+          <input id="folderInput" placeholder="https://drive.google.com/drive/folders/..." />
+        </div>
+        <div class="row">
+          <button class="btn primary" id="loadBtn" style="flex:1;">⟳ 読み込み</button>
+          <button class="btn" id="clearBtn" style="width:92px;">✕ クリア</button>
+        </div>
+        <div class="row">
+          <button class="btn" id="selectFolderBtn" style="flex:1;">📁 フォルダを選ぶ</button>
+        </div>
+        <div class="hint">
+          まずはB：クリックで右側にDriveプレビュー（iframe）を表示する最小版。
+        </div>
+      </div>
+
+      <div class="card favorites-section" id="favoritesSection" style="display:none;">
+        <div class="label" style="margin-bottom:6px;">お気に入り</div>
+        <div class="favorites-list" id="favoritesList"></div>
+      </div>
+
+      <div class="list">
+        <div class="search">
+          <div class="mag">🔍</div>
+          <input id="q" placeholder="検索（部分一致）" />
+        </div>
+        <div class="fileitems" id="fileitems"></div>
+        <div class="status">
+          <span class="pill" id="countPill">0 files</span>
+          <span class="pill" id="folderPill">folder: -</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title"><span id="topTitle">ファイルを選択してください</span></div>
+        <div class="actions">
+          <button class="btn info" id="infoBtn">ⓘ 詳細情報</button>
+          <button class="btn download" id="dlBtn">⬇ ダウンロード</button>
+          <button class="btn" id="newTabBtn">↗ 新しいタブ</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="preview" id="preview">
+          <div class="empty" id="empty">
+            <div>
+              <div class="folder">📁</div>
+              <h2>ファイルが選択されていません</h2>
+              <p>左でフォルダを読み込み、ファイルをクリックしてください</p>
+            </div>
+          </div>
+          <iframe id="iframe" style="display:none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- フォルダツリーモーダル -->
+  <div class="modal-overlay" id="folderTreeModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">フォルダを選択</div>
+        <button class="modal-close" id="modalCloseBtn">✕</button>
+      </div>
+      <div class="modal-body" id="modalTreeBody"></div>
+    </div>
+  </div>
+
+  <!-- 設定モーダル -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">設定</div>
+        <button class="modal-close" id="settingsModalCloseBtn">✕</button>
+      </div>
+      <div class="modal-body" id="settingsModalBody">
+        <div class="settings-group">
+          <div class="settings-group-title">お気に入りフォルダ</div>
+          <div class="favorites-edit" id="favoritesEdit"></div>
+          <div class="row" style="margin-top:8px;">
+            <button class="btn" id="addFavoriteBtn" style="flex:1;">現在のフォルダを追加</button>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-item">
+            <div class="settings-item-label">既定ソート</div>
+            <div class="settings-item-control">
+              <select id="defaultSortSelect">
+                <option value="modifiedTimeDesc">更新日（新しい順）</option>
+                <option value="modifiedTimeAsc">更新日（古い順）</option>
+                <option value="nameAsc">名前（昇順）</option>
+                <option value="nameDesc">名前（降順）</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-label">件数制限</div>
+            <div class="settings-item-control">
+              <input type="number" id="limitInput" min="0" placeholder="0=制限なし" />
+            </div>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-label">履歴保存</div>
+            <div class="settings-item-control">
+              <input type="checkbox" id="historyEnabledCheck" />
+            </div>
+          </div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-item">
+            <div class="settings-item-label">テーマ</div>
+            <div class="settings-item-control">
+              <select id="themeSelect">
+                <option value="solarizedLight">Solarized Light</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:16px;">
+          <button class="btn primary" id="saveSettingsBtn" style="flex:1;">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ヘルプモーダル -->
+  <div class="modal-overlay" id="helpModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">ヘルプ</div>
+        <button class="modal-close" id="helpModalCloseBtn">✕</button>
+      </div>
+      <div class="modal-body" id="helpModalBody">
+        <div class="help-section">
+          <div class="help-section-title">クイックスタート</div>
+          <div class="help-content">
+            <ol>
+              <li>フォルダURLまたはフォルダIDを入力して「読み込み」をクリック</li>
+              <li>または「フォルダを選ぶ」からツリーで選択</li>
+              <li>ファイル一覧からファイルをクリックしてプレビュー</li>
+              <li>フォルダをクリックするとそのフォルダに移動</li>
+            </ol>
+          </div>
+        </div>
+        <div class="help-section">
+          <div class="help-section-title">よくある質問（FAQ）</div>
+          <div class="help-content">
+            <p><strong>Q: ファイルが0件と表示される</strong><br/>
+            A: フォルダIDが正しいか確認してください。権限がないフォルダは表示されません。</p>
+            <p><strong>Q: プレビューが表示されない</strong><br/>
+            A: ファイル形式によってはプレビューに対応していません。「新しいタブ」で開いてください。</p>
+            <p><strong>Q: 読み込みが重い</strong><br/>
+            A: 設定で「件数制限」を設定すると、取得件数を制限して高速化できます。</p>
+          </div>
+        </div>
+        <div class="version-info" id="versionInfo"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  (function () {
+    'use strict';
+
+    const LOG_ENDPOINT = 'http://127.0.0.1:7244/ingest/e371640a-1e2c-4990-b84f-548069bac67c';
+    function dlog(hypothesisId, location, message, data, runId) {
+      // #region agent log
+      fetch(LOG_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'debug-session',
+          runId: runId || 'run1',
+          hypothesisId,
+          location,
+          message,
+          data: data || {},
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+      // ===== DOM =====
+      const folderInput = document.getElementById('folderInput');
+      const loadBtn = document.getElementById('loadBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const q = document.getElementById('q');
+      const fileitems = document.getElementById('fileitems');
+
+      const topTitle = document.getElementById('topTitle');
+      const empty = document.getElementById('empty');
+      const iframe = document.getElementById('iframe');
+      const countPill = document.getElementById('countPill');
+      const folderPill = document.getElementById('folderPill');
+
+      const infoBtn = document.getElementById('infoBtn');
+      const dlBtn = document.getElementById('dlBtn');
+      const newTabBtn = document.getElementById('newTabBtn');
+      const backBtn = document.getElementById('backBtn');
+      const selectFolderBtn = document.getElementById('selectFolderBtn');
+      const folderTreeModal = document.getElementById('folderTreeModal');
+      const modalCloseBtn = document.getElementById('modalCloseBtn');
+      const modalTreeBody = document.getElementById('modalTreeBody');
+      const settingsBtn = document.getElementById('settingsBtn');
+      const helpBtn = document.getElementById('helpBtn');
+      const settingsModal = document.getElementById('settingsModal');
+      const helpModal = document.getElementById('helpModal');
+      const settingsModalCloseBtn = document.getElementById('settingsModalCloseBtn');
+      const helpModalCloseBtn = document.getElementById('helpModalCloseBtn');
+      const favoritesSection = document.getElementById('favoritesSection');
+      const favoritesList = document.getElementById('favoritesList');
+      const favoritesEdit = document.getElementById('favoritesEdit');
+      const addFavoriteBtn = document.getElementById('addFavoriteBtn');
+      const defaultSortSelect = document.getElementById('defaultSortSelect');
+      const limitInput = document.getElementById('limitInput');
+      const historyEnabledCheck = document.getElementById('historyEnabledCheck');
+      const themeSelect = document.getElementById('themeSelect');
+      const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+      const versionInfo = document.getElementById('versionInfo');
+
+      dlog(
+        'H0',
+        'index.html:init:dom',
+        'DOM ready',
+        {
+          folderInput: !!folderInput,
+          loadBtn: !!loadBtn,
+          clearBtn: !!clearBtn,
+          q: !!q,
+          fileitems: !!fileitems,
+          topTitle: !!topTitle,
+          iframe: !!iframe,
+        },
+        'init'
+      );
+
+      if (!folderInput || !loadBtn || !clearBtn || !q || !fileitems || !topTitle || !empty || !iframe || !countPill || !folderPill) {
+        alert('初期化エラー：必要なDOM要素が見つかりません。ページを再デプロイ/ハードリロードしてください。');
+        return;
+      }
+
+      // ===== state =====
+      const FOLDER_MIME = 'application/vnd.google-apps.folder';
+      let allFiles = [];
+      let active = null;
+      let currentFolderId = null;
+      const folderHistory = [];
+      let userSettings = null;
+
+      // 実行確認用マーカー（Consoleで確認）
+      window.__fileNavi = { version: '2025-12-23-1', initializedAt: Date.now() };
+
+      // ===== helpers =====
+      function hasGasBridge() {
+        return !!(window.google && google.script && google.script.run);
+      }
+
+      function iconFor(mime) {
+        if (!mime) return '📁';
+        if (mime === FOLDER_MIME) return '📁';
+        if (mime.includes('pdf')) return '📄';
+        if (mime.includes('spreadsheet')) return '📊';
+        if (mime.includes('presentation')) return '📽';
+        if (mime.includes('document')) return '📝';
+        if (mime.startsWith('image/')) return '🖼';
+        if (mime.startsWith('video/')) return '🎬';
+        if (mime.startsWith('text/')) return '⌨';
+        return '📦';
+      }
+
+      function formatSize(bytes) {
+        const n = Number(bytes || 0);
+        if (!n) return '—';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let v = n,
+          i = 0;
+        while (v >= 1024 && i < units.length - 1) {
+          v /= 1024;
+          i++;
+        }
+        return (i === 0 ? v.toFixed(0) : v.toFixed(1)) + units[i];
+      }
+
+      function previewUrl(fileId) {
+        return 'https://drive.google.com/file/d/' + fileId + '/preview';
+      }
+      function viewUrl(fileId) {
+        return 'https://drive.google.com/file/d/' + fileId + '/view';
+      }
+      function folderUrl(folderId) {
+        return 'https://drive.google.com/drive/folders/' + folderId;
+      }
+      function downloadUrl(fileId) {
+        return 'https://drive.google.com/uc?export=download&id=' + fileId;
+      }
+
+      function setStatus(folderId, count) {
+        countPill.textContent = String(count) + ' files';
+        folderPill.textContent = 'folder: ' + (folderId || '-');
+      }
+
+      function setBackEnabled() {
+        if (!backBtn) return;
+        backBtn.disabled = folderHistory.length === 0;
+      }
+
+      function resetPreview() {
+        active = null;
+        topTitle.textContent = 'ファイルを選択してください';
+        iframe.src = '';
+        iframe.style.display = 'none';
+        empty.style.display = 'grid';
+      }
+
+      function render() {
+        const kw = q.value.trim().toLowerCase();
+        const list = allFiles.filter((f) => (f.name || '').toLowerCase().includes(kw));
+
+        fileitems.innerHTML = '';
+        for (const f of list) {
+          const el = document.createElement('div');
+          el.className = 'item' + (active && active.id === f.id ? ' active' : '');
+
+          const ico = document.createElement('div');
+          ico.className = 'ico';
+          ico.textContent = iconFor(f.mimeType);
+
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+
+          const name = document.createElement('div');
+          name.className = 'name';
+          name.title = f.name || '';
+          name.textContent = f.name || '（無題）';
+
+          const sub = document.createElement('div');
+          sub.className = 'sub';
+          sub.textContent = (f.mimeType || '') + ' ・ 更新: ' + (f.updated || '') + ' ・ ' + formatSize(f.size);
+
+          meta.appendChild(name);
+          meta.appendChild(sub);
+          el.appendChild(ico);
+          el.appendChild(meta);
+
+          el.addEventListener('click', () => selectItem(f));
+          fileitems.appendChild(el);
+        }
+      }
+
+      function selectItem(f) {
+        if (!f) return;
+        if (f.isFolder || f.mimeType === FOLDER_MIME) {
+          dlog('H1', 'index.html:selectItem', 'folder clicked', { id: f.id, name: f.name }, 'ui');
+          navigateToFolder(f.id);
+          return;
+        }
+
+        active = f;
+        topTitle.textContent = f.name || '（無題）';
+        empty.style.display = 'none';
+        iframe.style.display = 'block';
+        iframe.src = previewUrl(f.id);
+        render();
+      }
+
+      function restoreLoadBtn() {
+        loadBtn.disabled = false;
+        loadBtn.textContent = '⟳ 読み込み';
+      }
+
+      function loadFolder(input, mode) {
+        dlog('H2', 'index.html:loadFolder', 'loadFolder called', { input, mode, hasGas: hasGasBridge() }, 'ui');
+
+        loadBtn.disabled = true;
+        loadBtn.textContent = '読込中...';
+
+        if (!hasGasBridge()) {
+          restoreLoadBtn();
+          alert('Apps Script Webアプリの接続が利用できません。再デプロイ/ハードリロード後にお試しください。');
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler((res) => {
+            dlog('H3', 'index.html:loadFolder:success', 'listFiles success', { folderId: res && res.folderId, count: res && res.count }, 'ui');
+            allFiles = (res && res.files) ? res.files : [];
+            currentFolderId = res && res.folderId ? res.folderId : null;
+            resetPreview();
+            setStatus(currentFolderId, (res && res.count) ? res.count : allFiles.length);
+            setBackEnabled();
+            render();
+            restoreLoadBtn();
+          })
+          .withFailureHandler((err) => {
+            dlog('H4', 'index.html:loadFolder:fail', 'listFiles failed', { message: err && err.message ? err.message : String(err) }, 'ui');
+            alert('読み込み失敗：' + (err && err.message ? err.message : err));
+            restoreLoadBtn();
+          })
+          .listFiles(input);
+      }
+
+      function navigateToFolder(folderId) {
+        if (!folderId) {
+          alert('フォルダIDが無効です。');
+          return;
+        }
+        if (currentFolderId) folderHistory.push(currentFolderId);
+        setBackEnabled();
+        saveHistoryToSettings();
+        folderInput.value = folderId;
+        loadFolder(folderId, 'navigate');
+      }
+
+      // ===== events =====
+      loadBtn.addEventListener('click', () => {
+        dlog('H5', 'index.html:loadBtn', 'click', { value: folderInput.value }, 'ui');
+        const input = folderInput.value.trim();
+        if (!input) {
+          alert('フォルダURL（またはID）を入力してください。');
+          return;
+        }
+        // 手入力読み込み時も履歴に積む（←で戻れるようにする）
+        if (currentFolderId) {
+          folderHistory.push(currentFolderId);
+        }
+        setBackEnabled();
+        saveHistoryToSettings();
+        loadFolder(input, 'manual');
+      });
+
+      clearBtn.addEventListener('click', () => {
+        dlog('H6', 'index.html:clearBtn', 'click', {}, 'ui');
+        window.__fileNaviLastAction = { action: 'clear', at: Date.now() };
+        folderInput.value = '';
+        q.value = '';
+        allFiles = [];
+        currentFolderId = null;
+        folderHistory.length = 0;
+        fileitems.innerHTML = '';
+        setStatus('-', 0);
+        setBackEnabled();
+        resetPreview();
+      });
+
+      q.addEventListener('input', render);
+
+      if (infoBtn) {
+        infoBtn.addEventListener('click', () => {
+          if (!active) {
+            alert('ファイル未選択');
+            return;
+          }
+          alert(
+            '詳細情報\n' +
+              (active.name || '') +
+              '\n' +
+              (active.mimeType || '') +
+              '\n更新: ' +
+              (active.updated || '') +
+              '\nサイズ: ' +
+              formatSize(active.size) +
+              '\nID: ' +
+              (active.id || '')
+          );
+        });
+      }
+
+      if (dlBtn) {
+        dlBtn.addEventListener('click', () => {
+          if (!active) {
+            alert('ファイル未選択');
+            return;
+          }
+          if (active.isFolder || active.mimeType === FOLDER_MIME) {
+            alert('フォルダはダウンロードできません。右の「新しいタブ」で開いてください。');
+            return;
+          }
+          window.open(downloadUrl(active.id), '_blank', 'noopener');
+        });
+      }
+
+      if (newTabBtn) {
+        newTabBtn.addEventListener('click', () => {
+          if (!active) {
+            alert('ファイル未選択');
+            return;
+          }
+          if (active.isFolder || active.mimeType === FOLDER_MIME) {
+            window.open(folderUrl(active.id), '_blank', 'noopener');
+            return;
+          }
+          window.open(viewUrl(active.id), '_blank', 'noopener');
+        });
+      }
+
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          if (folderHistory.length === 0) return;
+          const prev = folderHistory.pop();
+          dlog('H7', 'index.html:backBtn', 'click', { prev }, 'ui');
+          setBackEnabled();
+          saveHistoryToSettings();
+          folderInput.value = prev;
+          loadFolder(prev, 'back');
+        });
+      }
+
+      // ===== フォルダツリーモーダル =====
+      const treeExpandedNodes = new Set();
+      const treeLoadedNodes = new Set();
+
+      function renderTreeRoot() {
+        if (!modalTreeBody) return;
+        modalTreeBody.innerHTML = '';
+
+        const rootNode = document.createElement('div');
+        rootNode.className = 'tree-node';
+        rootNode.innerHTML = '<div class="tree-expand empty">▶</div><span class="tree-icon">📁</span><span class="tree-name">マイドライブ</span>';
+        rootNode.addEventListener('click', (e) => {
+          if (!hasGasBridge()) return;
+          const expandIcon = rootNode.querySelector('.tree-expand');
+          if (e.target === expandIcon || expandIcon.contains(e.target)) {
+            // 展開アイコンをクリックした場合のみ展開
+            expandTreeNode('root', rootNode);
+          } else {
+            // ノード名やアイコンをクリックした場合は選択
+            google.script.run
+              .withSuccessHandler((rootId) => {
+                if (rootId) {
+                  selectTreeNode(rootId, 'マイドライブ');
+                }
+              })
+              .withFailureHandler((err) => {
+                alert('マイドライブのルートフォルダID取得に失敗しました: ' + (err && err.message ? err.message : err));
+              })
+              .getRootFolderId();
+          }
+        });
+        modalTreeBody.appendChild(rootNode);
+
+        const sharedNode = document.createElement('div');
+        sharedNode.className = 'tree-node';
+        sharedNode.innerHTML = '<div class="tree-expand empty">▶</div><span class="tree-icon">💼</span><span class="tree-name">共有ドライブ</span>';
+        sharedNode.addEventListener('click', (e) => {
+          if (!hasGasBridge()) return;
+          const expandIcon = sharedNode.querySelector('.tree-expand');
+          if (e.target === expandIcon || expandIcon.contains(e.target)) {
+            // 展開アイコンをクリックした場合のみ展開
+            expandTreeNode('sharedDrives', sharedNode);
+          }
+          // それ以外（ノード名やアイコン）をクリックした場合は何もしない（展開のみ）
+        });
+        modalTreeBody.appendChild(sharedNode);
+
+        const sharedWithMeNode = document.createElement('div');
+        sharedWithMeNode.className = 'tree-node';
+        sharedWithMeNode.innerHTML = '<div class="tree-expand empty">▶</div><span class="tree-icon">🤝</span><span class="tree-name">共有アイテム（共有されたフォルダ）</span>';
+        sharedWithMeNode.addEventListener('click', (e) => {
+          if (!hasGasBridge()) return;
+          const expandIcon = sharedWithMeNode.querySelector('.tree-expand');
+          if (e.target === expandIcon || expandIcon.contains(e.target)) {
+            expandTreeNode('sharedWithMe', sharedWithMeNode);
+          }
+        });
+        modalTreeBody.appendChild(sharedWithMeNode);
+      }
+
+      function expandTreeNode(parentKey, parentElement) {
+        // parentKey の検証
+        if (!parentKey || (typeof parentKey === 'string' && parentKey.trim() === '')) {
+          console.error('[expandTreeNode] parentKey is invalid:', parentKey);
+          alert('フォルダキーが無効です。parentKey: ' + String(parentKey || 'null/undefined'));
+          return;
+        }
+
+        if (treeExpandedNodes.has(parentKey)) {
+          const children = parentElement.nextElementSibling;
+          if (children && children.classList.contains('tree-children')) {
+            children.classList.toggle('expanded');
+            treeExpandedNodes.delete(parentKey);
+            const expandIcon = parentElement.querySelector('.tree-expand');
+            if (expandIcon) expandIcon.textContent = '▶';
+          }
+          return;
+        }
+
+        if (treeLoadedNodes.has(parentKey)) {
+          const children = parentElement.nextElementSibling;
+          if (children && children.classList.contains('tree-children')) {
+            children.classList.add('expanded');
+            treeExpandedNodes.add(parentKey);
+            const expandIcon = parentElement.querySelector('.tree-expand');
+            if (expandIcon) expandIcon.textContent = '▼';
+          }
+          return;
+        }
+
+        const expandIcon = parentElement.querySelector('.tree-expand');
+        if (expandIcon) expandIcon.textContent = '⏳';
+        if (expandIcon) expandIcon.classList.remove('empty');
+
+        // listChildFolders 呼び出し前に parentKey を再検証（念のため）
+        const safeParentKey = String(parentKey || '').trim();
+        if (!safeParentKey) {
+          console.error('[expandTreeNode] parentKey is invalid before listChildFolders:', parentKey);
+          alert('フォルダキーが無効です。parentKey: ' + String(parentKey || 'null/undefined'));
+          if (expandIcon) expandIcon.textContent = '▶';
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res && res.error) {
+              // サーバ側で取得失敗したが UI は落とさない設計。理由だけ出す。
+              console.warn('[expandTreeNode] server error:', res.error);
+              // alert はうるさいので、ツリー内にメッセージを出す
+            }
+            if (!res || !res.nodes) {
+              if (expandIcon) expandIcon.textContent = '▶';
+              return;
+            }
+
+            const children = document.createElement('div');
+            children.className = 'tree-children expanded';
+
+            if (res.nodes.length === 0) {
+              const empty = document.createElement('div');
+              empty.className = 'tree-loading';
+              empty.textContent = (res && res.error) ? ('（取得できません：' + res.error + '）') : '（フォルダなし）';
+              children.appendChild(empty);
+            } else {
+              res.nodes.forEach(node => {
+                const nodeEl = document.createElement('div');
+                nodeEl.className = 'tree-node';
+                const nodeKey = node.id;
+                const nodeName = node.name || '(無題)';
+                const nodeType = node.type || 'folder';
+
+                // nodeKey の検証
+                if (!nodeKey || (typeof nodeKey === 'string' && nodeKey.trim() === '')) {
+                  console.error('[expandTreeNode] node.id is invalid:', node);
+                  return; // このノードをスキップ
+                }
+
+                nodeEl.innerHTML = '<div class="tree-expand empty">▶</div><span class="tree-icon">' + (nodeType === 'sharedDrive' ? '💼' : '📁') + '</span><span class="tree-name">' + escapeHtml(nodeName) + '</span>';
+
+                nodeEl.addEventListener('click', (e) => {
+                  const expandIcon = nodeEl.querySelector('.tree-expand');
+                  if (e.target === expandIcon || expandIcon.contains(e.target)) {
+                    // 展開アイコンをクリックした場合のみ展開
+                    expandTreeNode(nodeKey, nodeEl);
+                  } else {
+                    // ノード名やアイコンをクリックした場合は選択
+                    selectTreeNode(nodeKey, nodeName);
+                  }
+                });
+
+                children.appendChild(nodeEl);
+              });
+            }
+
+            parentElement.after(children);
+            treeLoadedNodes.add(parentKey);
+            treeExpandedNodes.add(parentKey);
+            if (expandIcon) expandIcon.textContent = '▼';
+
+            if (res.nextPageToken) {
+              const moreBtn = document.createElement('button');
+              moreBtn.className = 'btn';
+              moreBtn.style.marginTop = '8px';
+              moreBtn.textContent = '続きを読み込む';
+              moreBtn.addEventListener('click', () => {
+                moreBtn.disabled = true;
+                moreBtn.textContent = '読み込み中...';
+                google.script.run
+                  .withSuccessHandler((res2) => {
+                    if (res2 && res2.nodes) {
+                      res2.nodes.forEach(node => {
+                        const nodeEl = document.createElement('div');
+                        nodeEl.className = 'tree-node';
+                        const nodeKey = node.id;
+                        const nodeName = node.name || '(無題)';
+                        const nodeType = node.type || 'folder';
+
+                        // nodeKey の検証
+                        if (!nodeKey || (typeof nodeKey === 'string' && nodeKey.trim() === '')) {
+                          console.error('[expandTreeNode] node.id is invalid (page2):', node);
+                          return; // このノードをスキップ
+                        }
+
+                        nodeEl.innerHTML = '<div class="tree-expand empty">▶</div><span class="tree-icon">' + (nodeType === 'sharedDrive' ? '💼' : '📁') + '</span><span class="tree-name">' + escapeHtml(nodeName) + '</span>';
+                        nodeEl.addEventListener('click', (e) => {
+                          const expandIcon = nodeEl.querySelector('.tree-expand');
+                          if (e.target === expandIcon || expandIcon.contains(e.target)) {
+                            // 展開アイコンをクリックした場合のみ展開
+                            expandTreeNode(nodeKey, nodeEl);
+                          } else {
+                            // ノード名やアイコンをクリックした場合は選択
+                            selectTreeNode(nodeKey, nodeName);
+                          }
+                        });
+                        children.appendChild(nodeEl);
+                      });
+                      if (res2.nextPageToken) {
+                        moreBtn.disabled = false;
+                        moreBtn.textContent = '続きを読み込む';
+                      } else {
+                        moreBtn.remove();
+                      }
+                    } else {
+                      moreBtn.remove();
+                    }
+                  })
+                  .withFailureHandler((err) => {
+                    alert('続きの読み込みに失敗しました: ' + (err && err.message ? err.message : err));
+                    moreBtn.disabled = false;
+                    moreBtn.textContent = '続きを読み込む';
+                  })
+                  .listChildFolders(safeParentKey || parentKey, res.nextPageToken);
+              });
+              children.appendChild(moreBtn);
+            }
+          })
+          .withFailureHandler((err) => {
+            alert('フォルダ一覧の取得に失敗しました: ' + (err && err.message ? err.message : err));
+            if (expandIcon) expandIcon.textContent = '▶';
+          })
+          .listChildFolders(safeParentKey);
+      }
+
+      function selectTreeNode(folderId, folderName) {
+        if (!folderId) return;
+        folderTreeModal.classList.remove('show');
+        folderInput.value = folderId;
+        if (currentFolderId) {
+          folderHistory.push(currentFolderId);
+        }
+        setBackEnabled();
+        saveHistoryToSettings();
+        loadFolder(folderId, 'tree');
+      }
+
+      function escapeHtml(s) {
+        if (!s) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      if (selectFolderBtn && folderTreeModal && modalCloseBtn) {
+        selectFolderBtn.addEventListener('click', () => {
+          if (!hasGasBridge()) {
+            alert('Apps Script Webアプリの接続が利用できません。');
+            return;
+          }
+          treeExpandedNodes.clear();
+          treeLoadedNodes.clear();
+          renderTreeRoot();
+          folderTreeModal.classList.add('show');
+        });
+
+        modalCloseBtn.addEventListener('click', () => {
+          folderTreeModal.classList.remove('show');
+        });
+
+        folderTreeModal.addEventListener('click', (e) => {
+          if (e.target === folderTreeModal) {
+            folderTreeModal.classList.remove('show');
+          }
+        });
+      }
+
+      // ===== 設定管理 =====
+      function loadSettings() {
+        if (!hasGasBridge()) {
+          userSettings = {
+            favorites: [],
+            defaultSort: 'modifiedTimeDesc',
+            limit: 0,
+            historyEnabled: false,
+            history: [],
+            theme: 'solarizedLight'
+          };
+          applySettings();
+          return;
+        }
+        google.script.run
+          .withSuccessHandler((settings) => {
+            userSettings = settings || {
+              favorites: [],
+              defaultSort: 'modifiedTimeDesc',
+              limit: 0,
+              historyEnabled: false,
+              history: [],
+              theme: 'solarizedLight'
+            };
+            applySettings();
+            if (userSettings.historyEnabled && userSettings.history && userSettings.history.length > 0) {
+              // 履歴を復元（最後の履歴から逆順に積む）
+              folderHistory.length = 0;
+              for (let i = userSettings.history.length - 1; i >= 0; i--) {
+                const h = userSettings.history[i];
+                if (h && h.id) folderHistory.push(h.id);
+              }
+              setBackEnabled();
+            }
+          })
+          .withFailureHandler((err) => {
+            console.error('設定読み込み失敗:', err);
+            userSettings = {
+              favorites: [],
+              defaultSort: 'modifiedTimeDesc',
+              limit: 0,
+              historyEnabled: false,
+              history: [],
+              theme: 'solarizedLight'
+            };
+            applySettings();
+          })
+          .getSettings();
+      }
+
+      function applySettings() {
+        if (!userSettings) return;
+        // テーマ適用
+        document.documentElement.dataset.theme = userSettings.theme || 'solarizedLight';
+        // お気に入り表示
+        renderFavorites();
+        // 設定フォーム反映
+        if (defaultSortSelect) defaultSortSelect.value = userSettings.defaultSort || 'modifiedTimeDesc';
+        if (limitInput) limitInput.value = userSettings.limit || 0;
+        if (historyEnabledCheck) historyEnabledCheck.checked = userSettings.historyEnabled || false;
+        if (themeSelect) themeSelect.value = userSettings.theme || 'solarizedLight';
+        renderFavoritesEdit();
+      }
+
+      function saveSettingsToServer() {
+        if (!hasGasBridge()) {
+          alert('Apps Script Webアプリの接続が利用できません。');
+          return;
+        }
+        const newSettings = {
+          favorites: userSettings ? userSettings.favorites : [],
+          defaultSort: defaultSortSelect ? defaultSortSelect.value : 'modifiedTimeDesc',
+          limit: limitInput ? (parseInt(limitInput.value, 10) || 0) : 0,
+          historyEnabled: historyEnabledCheck ? historyEnabledCheck.checked : false,
+          history: userSettings && userSettings.historyEnabled ? (userSettings.history || []) : [],
+          theme: themeSelect ? themeSelect.value : 'solarizedLight'
+        };
+        google.script.run
+          .withSuccessHandler((saved) => {
+            userSettings = saved;
+            applySettings();
+            alert('設定を保存しました。');
+          })
+          .withFailureHandler((err) => {
+            alert('設定の保存に失敗しました: ' + (err && err.message ? err.message : err));
+          })
+          .saveSettings(newSettings);
+      }
+
+      function renderFavorites() {
+        if (!favoritesList || !favoritesSection) return;
+        const favs = (userSettings && userSettings.favorites) ? userSettings.favorites : [];
+        if (favs.length === 0) {
+          favoritesSection.style.display = 'none';
+          return;
+        }
+        favoritesSection.style.display = 'block';
+        favoritesList.innerHTML = '';
+        favs.forEach(fav => {
+          const el = document.createElement('div');
+          el.className = 'favorite-item';
+          el.innerHTML = '<span class="fav-icon">⭐</span><span class="fav-name" title="' + escapeHtml(fav.name || '') + '">' + escapeHtml(fav.name || '') + '</span>';
+          el.addEventListener('click', () => {
+            if (fav.id) {
+              if (currentFolderId) folderHistory.push(currentFolderId);
+              setBackEnabled();
+              saveHistoryToSettings();
+              folderInput.value = fav.id;
+              loadFolder(fav.id, 'favorite');
+            }
+          });
+          favoritesList.appendChild(el);
+        });
+      }
+
+      function renderFavoritesEdit() {
+        if (!favoritesEdit) return;
+        const favs = (userSettings && userSettings.favorites) ? userSettings.favorites : [];
+        favoritesEdit.innerHTML = '';
+        if (favs.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'help-content';
+          empty.textContent = 'お気に入りはありません';
+          favoritesEdit.appendChild(empty);
+          return;
+        }
+        favs.forEach((fav, idx) => {
+          const el = document.createElement('div');
+          el.className = 'favorite-edit-item';
+          el.innerHTML = '<span class="fav-icon">⭐</span><span class="fav-name" title="' + escapeHtml(fav.name || '') + '">' + escapeHtml(fav.name || '') + '</span><button class="btn btn-small" data-index="' + idx + '">削除</button>';
+          const delBtn = el.querySelector('button');
+          delBtn.addEventListener('click', () => {
+            if (userSettings && userSettings.favorites) {
+              userSettings.favorites.splice(idx, 1);
+              renderFavoritesEdit();
+            }
+          });
+          favoritesEdit.appendChild(el);
+        });
+      }
+
+      function addCurrentFolderToFavorites() {
+        if (!currentFolderId) {
+          alert('フォルダが読み込まれていません。');
+          return;
+        }
+        if (!hasGasBridge()) {
+          alert('Apps Script Webアプリの接続が利用できません。');
+          return;
+        }
+        // 既に追加済みかチェック
+        const favs = (userSettings && userSettings.favorites) ? userSettings.favorites : [];
+        if (favs.some(f => f.id === currentFolderId)) {
+          alert('このフォルダは既にお気に入りに追加されています。');
+          return;
+        }
+        google.script.run
+          .withSuccessHandler((name) => {
+            if (!userSettings) userSettings = { favorites: [] };
+            if (!userSettings.favorites) userSettings.favorites = [];
+            userSettings.favorites.push({ id: currentFolderId, name: name || '（無題）' });
+            renderFavoritesEdit();
+          })
+          .withFailureHandler((err) => {
+            alert('フォルダ名の取得に失敗しました: ' + (err && err.message ? err.message : err));
+          })
+          .getFolderName(currentFolderId);
+      }
+
+      function saveHistoryToSettings() {
+        if (!userSettings || !userSettings.historyEnabled) return;
+        if (!hasGasBridge()) return;
+        const history = folderHistory.map(id => ({ id: id, name: '', at: Date.now() }));
+        const newSettings = Object.assign({}, userSettings, { history: history });
+        google.script.run
+          .withSuccessHandler(() => {
+            userSettings = newSettings;
+          })
+          .withFailureHandler((err) => {
+            console.error('履歴保存失敗:', err);
+          })
+          .saveSettings(newSettings);
+      }
+
+      // ===== モーダル操作 =====
+      function openModal(modal) {
+        if (modal) modal.classList.add('show');
+      }
+
+      function closeModal(modal) {
+        if (modal) modal.classList.remove('show');
+      }
+
+      function closeAllModals() {
+        closeModal(folderTreeModal);
+        closeModal(settingsModal);
+        closeModal(helpModal);
+      }
+
+      // Escキーでモーダルを閉じる
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeAllModals();
+        }
+      });
+
+      // 設定モーダル
+      if (settingsBtn && settingsModal) {
+        settingsBtn.addEventListener('click', () => {
+          loadSettings();
+          openModal(settingsModal);
+        });
+      }
+      if (settingsModalCloseBtn) {
+        settingsModalCloseBtn.addEventListener('click', () => closeModal(settingsModal));
+      }
+      if (settingsModal) {
+        settingsModal.addEventListener('click', (e) => {
+          if (e.target === settingsModal) closeModal(settingsModal);
+        });
+      }
+      if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', saveSettingsToServer);
+      }
+      if (addFavoriteBtn) {
+        addFavoriteBtn.addEventListener('click', addCurrentFolderToFavorites);
+      }
+
+      // ヘルプモーダル
+      if (helpBtn && helpModal) {
+        helpBtn.addEventListener('click', () => {
+          if (hasGasBridge()) {
+            google.script.run
+              .withSuccessHandler((info) => {
+                if (versionInfo) {
+                  versionInfo.textContent = 'バージョン: クライアント ' + (info.clientVersion || 'unknown') + ' / サーバ ' + (info.serverVersion || 'unknown');
+                }
+              })
+              .withFailureHandler(() => {
+                if (versionInfo) {
+                  versionInfo.textContent = 'バージョン: ' + (window.__fileNavi && window.__fileNavi.version ? window.__fileNavi.version : 'unknown');
+                }
+              })
+              .getAppInfo();
+          } else {
+            if (versionInfo) {
+              versionInfo.textContent = 'バージョン: ' + (window.__fileNavi && window.__fileNavi.version ? window.__fileNavi.version : 'unknown');
+            }
+          }
+          openModal(helpModal);
+        });
+      }
+      if (helpModalCloseBtn) {
+        helpModalCloseBtn.addEventListener('click', () => closeModal(helpModal));
+      }
+      if (helpModal) {
+        helpModal.addEventListener('click', (e) => {
+          if (e.target === helpModal) closeModal(helpModal);
+        });
+      }
+
+      // ===== initial =====
+      setStatus('-', 0);
+      setBackEnabled();
+      resetPreview();
+      loadSettings();
+      dlog('H8', 'index.html:init:done', 'init completed', { hasGas: hasGasBridge() }, 'init');
+      } catch (e) {
+        // ここで落ちると全ボタンが効かなくなる
+        try { window.__fileNaviInitError = { message: e && e.message ? e.message : String(e), at: Date.now() }; } catch (_) {}
+        console.error('fileNavi init error', e);
+        alert('初期化中にエラーで停止しました。Consoleをご確認ください。\n' + (e && e.message ? e.message : e));
+      }
+    });
+  })();
+</script>
+</body>
+</html>
