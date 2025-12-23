@@ -453,9 +453,6 @@
         <div class="row">
           <button class="btn" id="selectFolderBtn" style="flex:1;">📁 フォルダを選ぶ</button>
         </div>
-        <div class="hint">
-          まずはB：クリックで右側にDriveプレビュー（iframe）を表示する最小版。
-        </div>
       </div>
 
       <div class="card favorites-section" id="favoritesSection" style="display:none;">
@@ -481,7 +478,6 @@
         <div class="title"><span id="topTitle">ファイルを選択してください</span></div>
         <div class="actions">
           <button class="btn info" id="infoBtn">ⓘ 詳細情報</button>
-          <button class="btn download" id="dlBtn">⬇ ダウンロード</button>
           <button class="btn" id="newTabBtn">↗ 新しいタブ</button>
         </div>
       </header>
@@ -525,6 +521,9 @@
           <div class="favorites-edit" id="favoritesEdit"></div>
           <div class="row" style="margin-top:8px;">
             <button class="btn" id="addFavoriteBtn" style="flex:1;">現在のフォルダを追加</button>
+          </div>
+          <div class="help-content" style="margin-top:4px;">
+            ※ お気に入りの変更は、下部の「保存」ボタンを押すまで永続化されません。
           </div>
         </div>
         <div class="settings-group">
@@ -1356,6 +1355,7 @@
             if (userSettings && userSettings.favorites) {
               userSettings.favorites.splice(idx, 1);
               renderFavoritesEdit();
+              renderFavorites();
             }
           });
           favoritesEdit.appendChild(el);
@@ -1383,6 +1383,7 @@
             if (!userSettings.favorites) userSettings.favorites = [];
             userSettings.favorites.push({ id: currentFolderId, name: name || '（無題）' });
             renderFavoritesEdit();
+            renderFavorites();
           })
           .withFailureHandler((err) => {
             alert('フォルダ名の取得に失敗しました: ' + (err && err.message ? err.message : err));
