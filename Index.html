@@ -28,7 +28,7 @@
     }
     *{box-sizing:border-box;}
     html,body{height:100%;}
-    body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);}
+    body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);zoom:0.8;}
 
     .app{height:100%;display:grid;grid-template-columns:320px 1fr;}
 
@@ -357,6 +357,16 @@
     .favorites-section{
       margin-bottom:12px;
     }
+    .favorites-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .iconbtn.small{
+      width:28px;height:28px;border-radius:9px;
+      font-size:12px;
+    }
     .favorites-list{
       display:flex;flex-direction:column;gap:6px;margin-top:8px;
     }
@@ -444,7 +454,10 @@
       <div class="card">
         <div class="field">
           <div class="label">フォルダURL（またはフォルダID）</div>
-          <input id="folderInput" placeholder="https://drive.google.com/drive/folders/..." />
+          <div class="row" style="gap:8px;">
+            <input id="folderInput" placeholder="https://drive.google.com/drive/folders/..." style="flex:1;" />
+            <button class="iconbtn" id="quickFavoriteBtn" title="現在のフォルダをお気に入りに追加/解除" disabled>☆</button>
+          </div>
         </div>
         <div class="row">
           <button class="btn primary" id="loadBtn" style="flex:1;">⟳ 読み込み</button>
@@ -456,7 +469,10 @@
       </div>
 
       <div class="card favorites-section" id="favoritesSection" style="display:none;">
-        <div class="label" style="margin-bottom:6px;">お気に入り</div>
+        <div class="favorites-header">
+          <div class="label" style="margin-bottom:6px;">お気に入り</div>
+          <button class="iconbtn small" id="favoritesToggleBtn" title="お気に入りの表示/非表示">▼</button>
+        </div>
         <div class="favorites-list" id="favoritesList"></div>
       </div>
 
@@ -517,14 +533,11 @@
       </div>
       <div class="modal-body" id="settingsModalBody">
         <div class="settings-group">
-          <div class="settings-group-title">お気に入りフォルダ</div>
+          <div class="settings-group-title">お気に入り</div>
+          <div class="row" style="gap:8px;margin-bottom:8px;">
+            <button class="btn" id="favoritesAddCurrentBtn" style="flex:1;" disabled>＋ 現在のフォルダを追加</button>
+          </div>
           <div class="favorites-edit" id="favoritesEdit"></div>
-          <div class="row" style="margin-top:8px;">
-            <button class="btn" id="addFavoriteBtn" style="flex:1;">現在のフォルダを追加</button>
-          </div>
-          <div class="help-content" style="margin-top:4px;">
-            ※ お気に入りの変更は、下部の「保存」ボタンを押すまで永続化されません。
-          </div>
         </div>
         <div class="settings-group">
           <div class="settings-item">
@@ -659,8 +672,10 @@
       const helpModalCloseBtn = document.getElementById('helpModalCloseBtn');
       const favoritesSection = document.getElementById('favoritesSection');
       const favoritesList = document.getElementById('favoritesList');
+      const favoritesToggleBtn = document.getElementById('favoritesToggleBtn');
       const favoritesEdit = document.getElementById('favoritesEdit');
-      const addFavoriteBtn = document.getElementById('addFavoriteBtn');
+      const favoritesAddCurrentBtn = document.getElementById('favoritesAddCurrentBtn');
+      const quickFavoriteBtn = document.getElementById('quickFavoriteBtn');
       const defaultSortSelect = document.getElementById('defaultSortSelect');
       const limitInput = document.getElementById('limitInput');
       const historyEnabledCheck = document.getElementById('historyEnabledCheck');
@@ -696,6 +711,8 @@
       let currentFolderId = null;
       const folderHistory = [];
       let userSettings = null;
+      let favoriteSaving = false;
+      let favoritesCollapsed = false;
 
       // 実行確認用マーカー（Consoleで確認）
       window.__fileNavi = { version: '2025-12-23-1', initializedAt: Date.now() };
@@ -835,6 +852,7 @@
             dlog('H3', 'index.html:loadFolder:success', 'listFiles success', { folderId: res && res.folderId, count: res && res.count }, 'ui');
             allFiles = (res && res.files) ? res.files : [];
             currentFolderId = res && res.folderId ? res.folderId : null;
+            updateQuickFavoriteBtnUI_();
             resetPreview();
             setStatus(currentFolderId, (res && res.count) ? res.count : allFiles.length);
             setBackEnabled();
@@ -885,6 +903,7 @@
         q.value = '';
         allFiles = [];
         currentFolderId = null;
+        updateQuickFavoriteBtnUI_();
         folderHistory.length = 0;
         fileitems.innerHTML = '';
         setStatus('-', 0);
@@ -1282,6 +1301,33 @@
         if (historyEnabledCheck) historyEnabledCheck.checked = userSettings.historyEnabled || false;
         if (themeSelect) themeSelect.value = userSettings.theme || 'solarizedLight';
         renderFavoritesEdit();
+        updateQuickFavoriteBtnUI_();
+      }
+
+      function loadFavoritesCollapsedState_() {
+        try {
+          const v = window.localStorage ? localStorage.getItem('fileNavi.favoritesCollapsed') : null;
+          favoritesCollapsed = v === '1';
+        } catch (_) {
+          favoritesCollapsed = false;
+        }
+        updateFavoritesCollapseUI_();
+      }
+
+      function saveFavoritesCollapsedState_() {
+        try {
+          if (window.localStorage) {
+            localStorage.setItem('fileNavi.favoritesCollapsed', favoritesCollapsed ? '1' : '0');
+          }
+        } catch (_) {}
+      }
+
+      function updateFavoritesCollapseUI_() {
+        if (!favoritesList) return;
+        if (favoritesToggleBtn) {
+          favoritesToggleBtn.textContent = favoritesCollapsed ? '▶' : '▼';
+        }
+        favoritesList.style.display = favoritesCollapsed ? 'none' : 'flex';
       }
 
       function saveSettingsToServer() {
@@ -1307,6 +1353,117 @@
             alert('設定の保存に失敗しました: ' + (err && err.message ? err.message : err));
           })
           .saveSettings(newSettings);
+      }
+
+      function buildSettingsPayload_(favoritesOverride) {
+        const favs = Array.isArray(favoritesOverride)
+          ? favoritesOverride
+          : (userSettings && Array.isArray(userSettings.favorites) ? userSettings.favorites : []);
+
+        return {
+          favorites: favs,
+          defaultSort: defaultSortSelect ? defaultSortSelect.value : 'modifiedTimeDesc',
+          limit: limitInput ? (parseInt(limitInput.value, 10) || 0) : 0,
+          historyEnabled: historyEnabledCheck ? historyEnabledCheck.checked : false,
+          history: (userSettings && userSettings.historyEnabled) ? (userSettings.history || []) : [],
+          theme: themeSelect ? themeSelect.value : 'solarizedLight'
+        };
+      }
+
+      function saveSettingsSilently_(payload) {
+        if (favoriteSaving) return;
+        if (!hasGasBridge()) {
+          alert('Apps Script Webアプリの接続が利用できません。');
+          return;
+        }
+        favoriteSaving = true;
+        updateQuickFavoriteBtnUI_();
+
+        google.script.run
+          .withSuccessHandler((saved) => {
+            userSettings = saved || payload;
+            applySettings();
+            favoriteSaving = false;
+            updateQuickFavoriteBtnUI_();
+          })
+          .withFailureHandler((err) => {
+            favoriteSaving = false;
+            updateQuickFavoriteBtnUI_();
+            alert('お気に入りの保存に失敗しました: ' + (err && err.message ? err.message : err));
+          })
+          .saveSettings(payload);
+      }
+
+      function isFavorited_(folderId) {
+        if (!folderId) return false;
+        const favs = (userSettings && Array.isArray(userSettings.favorites)) ? userSettings.favorites : [];
+        return favs.some(f => f && f.id === folderId);
+      }
+
+      function updateQuickFavoriteBtnUI_() {
+        if (!quickFavoriteBtn) return;
+
+        if (favoriteSaving) {
+          quickFavoriteBtn.disabled = true;
+          quickFavoriteBtn.textContent = '…';
+          if (favoritesAddCurrentBtn) {
+            favoritesAddCurrentBtn.disabled = true;
+          }
+          return;
+        }
+
+        if (!currentFolderId) {
+          quickFavoriteBtn.disabled = true;
+          quickFavoriteBtn.textContent = '☆';
+          if (favoritesAddCurrentBtn) {
+            favoritesAddCurrentBtn.disabled = true;
+          }
+          return;
+        }
+
+        quickFavoriteBtn.disabled = false;
+        quickFavoriteBtn.textContent = isFavorited_(currentFolderId) ? '★' : '☆';
+        if (favoritesAddCurrentBtn) {
+          favoritesAddCurrentBtn.disabled = isFavorited_(currentFolderId);
+        }
+      }
+
+      function toggleCurrentFolderFavorite_() {
+        if (!currentFolderId) return;
+        if (!hasGasBridge()) {
+          alert('Apps Script Webアプリの接続が利用できません。');
+          return;
+        }
+        if (favoriteSaving) return;
+
+        if (!userSettings) userSettings = { favorites: [] };
+        if (!Array.isArray(userSettings.favorites)) userSettings.favorites = [];
+
+        const idx = userSettings.favorites.findIndex(f => f && f.id === currentFolderId);
+
+        // 解除
+        if (idx >= 0) {
+          userSettings.favorites.splice(idx, 1);
+          saveSettingsSilently_(buildSettingsPayload_(userSettings.favorites));
+          return;
+        }
+
+        // 追加（フォルダ名を取得してから保存）
+        favoriteSaving = true;
+        updateQuickFavoriteBtnUI_();
+        google.script.run
+          .withSuccessHandler((name) => {
+            favoriteSaving = false;
+            updateQuickFavoriteBtnUI_();
+            userSettings.favorites.push({ id: currentFolderId, name: name || '（無題）' });
+            saveSettingsSilently_(buildSettingsPayload_(userSettings.favorites));
+          })
+          .withFailureHandler((err) => {
+            favoriteSaving = false;
+            updateQuickFavoriteBtnUI_();
+            alert('フォルダ名の取得に失敗しました: ' + (err && err.message ? err.message : err));
+          })
+          .getFolderName(currentFolderId);
       }
 
       function renderFavorites() {
@@ -1352,10 +1509,11 @@
           el.innerHTML = '<span class="fav-icon">⭐</span><span class="fav-name" title="' + escapeHtml(fav.name || '') + '">' + escapeHtml(fav.name || '') + '</span><button class="btn btn-small" data-index="' + idx + '">削除</button>';
           const delBtn = el.querySelector('button');
           delBtn.addEventListener('click', () => {
+            if (favoriteSaving) return;
             if (userSettings && userSettings.favorites) {
               userSettings.favorites.splice(idx, 1);
-              renderFavoritesEdit();
-              renderFavorites();
+              updateQuickFavoriteBtnUI_();
+              saveSettingsSilently_(buildSettingsPayload_(userSettings.favorites));
             }
           });
           favoritesEdit.appendChild(el);
@@ -1446,8 +1604,26 @@
       if (saveSettingsBtn) {
         saveSettingsBtn.addEventListener('click', saveSettingsToServer);
       }
-      if (addFavoriteBtn) {
-        addFavoriteBtn.addEventListener('click', addCurrentFolderToFavorites);
+      // お気に入り追加は入力欄横の「☆」に移設（即保存）
+      if (quickFavoriteBtn) {
+        quickFavoriteBtn.addEventListener('click', toggleCurrentFolderFavorite_);
+      }
+      if (favoritesAddCurrentBtn) {
+        favoritesAddCurrentBtn.addEventListener('click', () => {
+          if (!currentFolderId) {
+            alert('フォルダが読み込まれていません。');
+            return;
+          }
+          if (isFavorited_(currentFolderId)) return;
+          toggleCurrentFolderFavorite_();
+        });
+      }
+      if (favoritesToggleBtn) {
+        favoritesToggleBtn.addEventListener('click', () => {
+          favoritesCollapsed = !favoritesCollapsed;
+          updateFavoritesCollapseUI_();
+          saveFavoritesCollapsedState_();
+        });
       }
 
       // ヘルプモーダル
@@ -1487,6 +1663,7 @@
       setStatus('-', 0);
       setBackEnabled();
       resetPreview();
+      loadFavoritesCollapsedState_();
       loadSettings();
       dlog('H8', 'index.html:init:done', 'init completed', { hasGas: hasGasBridge() }, 'init');
       } catch (e) {
