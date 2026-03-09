@@ -447,17 +447,20 @@
       box-shadow:0 4px 12px rgba(0,0,0,.3);
     }
     .tooltip-container:hover .tooltip-hint{opacity:1;pointer-events:auto;}
-    .fileitems-wrapper{position:relative;}
+    .fileitems-wrapper{
+      position:relative;flex:1;min-height:0;overflow:hidden;
+      display:flex;flex-direction:column;
+    }
     .fileitems-tooltip{
-      position:absolute;top:10px;left:10px;
+      position:absolute;top:12px;left:6px;
       background:rgba(0,0,0,.85);color:#fff;
-      padding:8px 12px;border-radius:8px;
+      padding:6px 10px;border-radius:8px;
       font-size:11px;line-height:1.4;
       opacity:0;pointer-events:none;transition:opacity 0.2s;
       white-space:nowrap;z-index:100;
       box-shadow:0 4px 12px rgba(0,0,0,.3);
     }
-    .fileitems-wrapper:hover .fileitems-tooltip{opacity:1;}
+    .list:has(.fileitems > div):hover .fileitems-tooltip{opacity:1;}
   </style>
 </head>
 <body>
@@ -505,10 +508,10 @@
           <div class="mag">🔍</div>
           <input id="q" placeholder="検索（部分一致）" />
         </div>
-        <div class="fileitems-wrapper" style="position:relative;flex:1;min-height:0;">
+        <div class="fileitems-wrapper">
           <div class="fileitems" id="fileitems"></div>
-          <div class="fileitems-tooltip">Shift+↑↓：ファイル移動 | Shift+Enter：開く</div>
         </div>
+        <div class="fileitems-tooltip">Shift+↑↓：ファイル移動 | Shift+Enter：開く</div>
         <div class="status">
           <span class="pill" id="countPill">0 files</span>
           <span class="pill" id="folderPill">folder: -</span>
