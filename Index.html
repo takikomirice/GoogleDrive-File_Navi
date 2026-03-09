@@ -434,6 +434,30 @@
       margin-top:16px;padding-top:16px;border-top:1px solid var(--border);
       font-size:11px;color:var(--muted);text-align:center;
     }
+
+    /* Tooltip styles */
+    .tooltip-container{position:relative;display:inline-block;width:100%;height:100%;}
+    .tooltip-hint{
+      position:absolute;bottom:10px;left:10px;
+      background:rgba(0,0,0,.85);color:#fff;
+      padding:8px 12px;border-radius:8px;
+      font-size:11px;line-height:1.4;
+      opacity:0;pointer-events:none;transition:opacity 0.2s;
+      white-space:nowrap;z-index:100;
+      box-shadow:0 4px 12px rgba(0,0,0,.3);
+    }
+    .tooltip-container:hover .tooltip-hint{opacity:1;pointer-events:auto;}
+    .fileitems-wrapper{position:relative;}
+    .fileitems-tooltip{
+      position:absolute;top:10px;left:10px;
+      background:rgba(0,0,0,.85);color:#fff;
+      padding:8px 12px;border-radius:8px;
+      font-size:11px;line-height:1.4;
+      opacity:0;pointer-events:none;transition:opacity 0.2s;
+      white-space:nowrap;z-index:100;
+      box-shadow:0 4px 12px rgba(0,0,0,.3);
+    }
+    .fileitems-wrapper:hover .fileitems-tooltip{opacity:1;}
   </style>
 </head>
 <body>
@@ -481,7 +505,10 @@
           <div class="mag">🔍</div>
           <input id="q" placeholder="検索（部分一致）" />
         </div>
-        <div class="fileitems" id="fileitems"></div>
+        <div class="fileitems-wrapper" style="position:relative;flex:1;min-height:0;">
+          <div class="fileitems" id="fileitems"></div>
+          <div class="fileitems-tooltip">Shift+↑↓：ファイル移動 | Shift+Enter：開く</div>
+        </div>
         <div class="status">
           <span class="pill" id="countPill">0 files</span>
           <span class="pill" id="folderPill">folder: -</span>
@@ -500,14 +527,17 @@
 
       <section class="content">
         <div class="preview" id="preview">
-          <div class="empty" id="empty">
-            <div>
-              <div class="folder">📁</div>
-              <h2>ファイルが選択されていません</h2>
-              <p>左でフォルダを読み込み、ファイルをクリックしてください</p>
+          <div class="tooltip-container" style="height:100%;position:relative;display:flex;flex-direction:column;">
+            <div class="empty" id="empty">
+              <div>
+                <div class="folder">📁</div>
+                <h2>ファイルが選択されていません</h2>
+                <p>左でフォルダを読み込み、ファイルをクリックしてください</p>
+              </div>
             </div>
+            <iframe id="iframe" style="display:none;flex:1;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+            <div class="tooltip-hint" style="display:none;" id="previewTooltip">↑↓ キー：スクロール</div>
           </div>
-          <iframe id="iframe" style="display:none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
         </div>
       </section>
     </main>
@@ -600,6 +630,17 @@
               <li>ファイル一覧からファイルをクリックしてプレビュー</li>
               <li>フォルダをクリックするとそのフォルダに移動</li>
             </ol>
+          </div>
+        </div>
+        <div class="help-section">
+          <div class="help-section-title">キーボードショートカット</div>
+          <div class="help-content">
+            <ul>
+              <li><code>↑ ↓</code> （上下矢印キー）：PDFやプレビューの上下スクロール</li>
+              <li><code>Shift + ↑ ↓</code> （Shift＋上下矢印キー）：左側のファイル一覧内で前後のファイルに移動</li>
+              <li><code>Shift + Enter</code> （Shift+Enterキー）：選択ファイルを新しいタブで開く</li>
+              <li><code>Escape</code> （Escキー）：モーダルを閉じる</li>
+            </ul>
           </div>
         </div>
         <div class="help-section">
@@ -777,6 +818,8 @@
         iframe.src = '';
         iframe.style.display = 'none';
         empty.style.display = 'grid';
+        const previewTooltip = document.getElementById('previewTooltip');
+        if (previewTooltip) previewTooltip.style.display = 'none';
       }
 
       function render() {
@@ -827,6 +870,8 @@
         empty.style.display = 'none';
         iframe.style.display = 'block';
         iframe.src = previewUrl(f.id);
+        const previewTooltip = document.getElementById('previewTooltip');
+        if (previewTooltip) previewTooltip.style.display = 'block';
         render();
       }
 
@@ -1579,10 +1624,72 @@
         closeModal(helpModal);
       }
 
-      // Escキーでモーダルを閉じる
+      // キーボードショートカット
       document.addEventListener('keydown', (e) => {
+        // Escキーでモーダルを閉じる
         if (e.key === 'Escape') {
           closeAllModals();
+          return;
+        }
+
+        // 上下矢印キー：PDFの上下移動
+        if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+          if (active && iframe && iframe.style.display !== 'none') {
+            e.preventDefault();
+            const scrollAmount = 100;
+            try {
+              if (iframe.contentWindow) {
+                const direction = e.key === 'ArrowUp' ? -scrollAmount : scrollAmount;
+                iframe.contentWindow.scrollBy(0, direction);
+              }
+            } catch (_) {
+              // iframe内容へのアクセスが制限されている場合
+            }
+          }
+          return;
+        }
+
+        // Shift+上下矢印キー：左側フォルダ内のファイル間の移動
+        if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.shiftKey && !e.ctrlKey && !e.altKey) {
+          if (!allFiles || allFiles.length === 0) return;
+          
+          e.preventDefault();
+          
+          // 現在のフィルター済みリストを取得
+          const kw = q.value.trim().toLowerCase();
+          const filteredList = allFiles.filter((f) => (f.name || '').toLowerCase().includes(kw));
+          
+          if (filteredList.length === 0) return;
+          
+          // 次のインデックスを計算
+          let nextIdx = 0;
+          if (active) {
+            const currentIdx = filteredList.findIndex((f) => f.id === active.id);
+            if (currentIdx >= 0) {
+              if (e.key === 'ArrowDown') {
+                nextIdx = (currentIdx + 1) % filteredList.length;
+              } else {
+                nextIdx = (currentIdx - 1 + filteredList.length) % filteredList.length;
+              }
+            }
+          }
+          
+          selectItem(filteredList[nextIdx]);
+          return;
+        }
+
+        // Shift+Enter：ファイル選択
+        if (e.key === 'Enter' && e.shiftKey && !e.ctrlKey && !e.altKey) {
+          if (active) {
+            e.preventDefault();
+            // 新しいタブで開く
+            if (active.isFolder || active.mimeType === FOLDER_MIME) {
+              window.open(folderUrl(active.id), '_blank', 'noopener');
+            } else {
+              window.open(viewUrl(active.id), '_blank', 'noopener');
+            }
+          }
+          return;
         }
       });
 
